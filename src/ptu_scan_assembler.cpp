@@ -3,8 +3,6 @@
 #include "ros/ros.h"
 #include "ros/console.h"
 
-
-#include "laser_geometry/laser_geometry.h"
 #include "sensor_msgs/LaserScan.h"
 #include "sensor_msgs/JointState.h"
 
@@ -58,7 +56,6 @@ class Assembler
 	const int tiltId;
 
 	tf::TransformListener tfListener;
-	laser_geometry::LaserProjection projector;
 
 	DP cloud;
 	boost::mutex mutexCloud;
