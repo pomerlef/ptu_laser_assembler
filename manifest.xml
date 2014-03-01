@@ -1,0 +1,19 @@
+<package>
+  <description brief="Aggregation nodes for a laser rangefinder">
+    Provides nodes to assemble point clouds from a LaserScan controlled with the ptu46
+  </description>
+
+
+	<depend package="roscpp"/>
+  <depend package="std_msgs"/>
+  <depend package="geometry_msgs"/>
+  <depend package="laser_geometry"/>
+  <depend package="sensor_msgs"/>
+  <depend package="tf"/>
+  <depend package="libpointmatcher"/>
+  <depend package="libpointmatcher_ros"/>
+  <rosdep name="yaml-cpp"/>
+  <rosdep name="eigen"/>
+
+</package>
+
