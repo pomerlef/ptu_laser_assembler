@@ -39,6 +39,7 @@ class Assembler
 
 	// Parameters
 	const string odom_frame;
+	const string sensor_frame;
 	const bool oscPan;
 	const bool oscTilt;
 	const float minPan;
@@ -60,7 +61,6 @@ class Assembler
 	DP cloud;
 	boost::mutex mutexCloud;
 	PM::Transformation *transformation;
-	string sensor_frame;
 	ros::Time scanTime;
   std::queue<sensor_msgs::LaserScan> scanQueue;
   ros::Duration durationBuffer;
@@ -83,6 +83,7 @@ Assembler::Assembler(ros::NodeHandle& n, ros::NodeHandle& pn):
 	n(n),
 	pn(n),
   odom_frame(getParam<string>("odom_frame", "/odom")),
+  sensor_frame(getParam<string>("sensor_frame", "/laser")),
   oscPan(getParam<bool>("oscPan", true)),
   oscTilt(getParam<bool>("oscTilt", false)),
   minPan(getParam<double>("minPan", -M_PI/2)),
@@ -90,14 +91,14 @@ Assembler::Assembler(ros::NodeHandle& n, ros::NodeHandle& pn):
   minTilt(getParam<double>("minTilt", -0.8)),
   maxTilt(getParam<double>("maxTilt", 0.5)),
   velocityPan(getParam<double>("velocityPan", 2.0)),
-  velocityTilt(getParam<double>("velocityTp", 0.5)),
+  velocityTilt(getParam<double>("velocityTilt", 0.5)),
 	panId(0),
 	tiltId(1),
 	tfListener(n, ros::Duration(30)),
 	transformation(PM::get().REG(Transformation).create("RigidTransformation")),
-	sensor_frame(""),
   durationBuffer(ros::Duration(0.2)),
-  msgDelay(ros::Duration(0.062))
+  //msgDelay(ros::Duration(0.062))
+  msgDelay(ros::Duration(getParam<double>("msgDelay", 0.12)))
 {
 	
 	scanSub = n.subscribe("/lidar/scan", 1, &Assembler::gotScan, this);
@@ -167,7 +168,7 @@ void Assembler::gotScan(const sensor_msgs::LaserScan& scanMsg)
     {
 
       mutexCloud.lock();
-      sensor_frame = scanMsgIn.header.frame_id;
+      //sensor_frame = scanMsgIn.header.frame_id;
       if(cloud.features.cols() == 0)
       {
         cloud = PointMatcher_ros::rosMsgToPointMatcherCloud<float>(scanMsgIn, &tfListener, odom_frame, true);
@@ -180,6 +181,10 @@ void Assembler::gotScan(const sensor_msgs::LaserScan& scanMsg)
       mutexCloud.unlock();
     }
     catch(tf::ExtrapolationException e)
+    {
+      ROS_WARN_STREAM(e.what());	
+    }
+    catch(PM::DataPoints::InvalidField e)
     {
       ROS_WARN_STREAM(e.what());	
     }
