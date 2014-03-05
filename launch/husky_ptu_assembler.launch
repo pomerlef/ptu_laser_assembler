@@ -8,8 +8,8 @@
         <param name="maxPan" type="double" value="1.57"/>
         <param name="minTilt" type="double" value="-0.8"/>
         <param name="maxTilt" type="double" value="0.5"/>
-        <param name="velocityPan" type="double" value="2.0"/>
+        <param name="velocityPan" type="double" value="1.5"/>
         <param name="velocityTilt" type="double" value="0.5"/>
-        <param name="msgDelay" type="double" value="0.045"/>
+        <param name="msgDelay" type="double" value="0.053"/> <!-- This value was experimentaly computed for husky cpr-lav01 -->
     </node>
 </launch>
