@@ -53,6 +53,7 @@ class Assembler
 	// States
 	bool currentPanMax;
 	bool currentTiltMax;
+  bool firstPointCloud;
 	
 	const int panId;
 	const int tiltId;
@@ -93,16 +94,17 @@ Assembler::Assembler(ros::NodeHandle& n, ros::NodeHandle& pn):
   maxTilt(getParam<double>("maxTilt", 0.5)),
   velocityPan(getParam<double>("velocityPan", 2.0)),
   velocityTilt(getParam<double>("velocityTilt", 0.5)),
+  firstPointCloud(true),
 	panId(0),
 	tiltId(1),
 	tfListener(n, ros::Duration(30)),
 	transformation(PM::get().REG(Transformation).create("RigidTransformation")),
-  durationBuffer(ros::Duration(0.2)),
+  durationBuffer(ros::Duration(0.5)),
   //msgDelay(ros::Duration(0.062))
   msgDelay(ros::Duration(getParam<double>("msgDelay", 0.12)))
 {
 	
-	scanSub = n.subscribe("/lidar/scan", 20, &Assembler::gotScan, this);
+	scanSub = n.subscribe("/lidar/scan", 2, &Assembler::gotScan, this);
 	ptuSub = n.subscribe("/ptu/state", 1, &Assembler::gotJoint, this);
 	
 	ptuPub = n.advertise<sensor_msgs::JointState>("/ptu/cmd", 2, true);
@@ -152,7 +154,7 @@ sensor_msgs::JointState Assembler::buildPtuJoint()
 
 void Assembler::gotScan(const sensor_msgs::LaserScan& scanMsg)
 {
-  PointMatcherSupport::timer t;
+  //PointMatcherSupport::timer t;
 
   scanQueue.push(scanMsg);
   
@@ -170,8 +172,6 @@ void Assembler::gotScan(const sensor_msgs::LaserScan& scanMsg)
     try
     {
 
-      mutexCloud.lock();
-      //sensor_frame = scanMsgIn.header.frame_id;
       if(cloud.features.cols() == 0)
       {
         cloud = PointMatcher_ros::rosMsgToPointMatcherCloud<float>(scanMsgIn, &tfListener, odom_frame, true, true);
@@ -181,7 +181,6 @@ void Assembler::gotScan(const sensor_msgs::LaserScan& scanMsg)
         cloud.concatenate(PointMatcher_ros::rosMsgToPointMatcherCloud<float>(scanMsgIn, &tfListener, odom_frame, true, true));
       }
 
-      mutexCloud.unlock();
     }
     catch(tf::ExtrapolationException e)
     {
@@ -199,17 +198,16 @@ void Assembler::gotScan(const sensor_msgs::LaserScan& scanMsg)
     }
   }
 
-  double runTime = t.elapsed();
-  cout << "Callback took " << runTime << " sec, (" << 1/runTime << " Hz)" << endl;
+  //double runTime = t.elapsed();
+  //cout << "Callback took " << runTime << " sec, (" << 1/runTime << " Hz)" << endl;
 
 }
 
 void Assembler::publishCloud()
 {
-	//cout << "point cloud size: " << cloud.features.cols() << endl;
 	if(cloud.features.cols() != 0)
 	{
-		mutexCloud.lock();
+		//mutexCloud.lock();
 
 		PM::TransformationParameters TOdomToScanner =
 					PointMatcher_ros::transformListenerToEigenMatrix<float>(
@@ -219,34 +217,37 @@ void Assembler::publishCloud()
 					scanTime
 				);
 
-		//TOdomToScanner(0,3) = 0;
-		//TOdomToScanner(1,3) = 0;
-		//TOdomToScanner(2,3) = 0;
-
 		// Bring the scan back to local frame (i.e., centered to the scanner)
 		cloud = transformation->compute(cloud, TOdomToScanner);
 
-		//cout << TOdomToScanner << endl;
-
-		if (cloudPub.getNumSubscribers())
-			cloudPub.publish(PointMatcher_ros::pointMatcherCloudToRosMsg<float>(cloud, sensor_frame, scanTime));
+    if(firstPointCloud)
+    {
+      firstPointCloud = false;
+      ROS_INFO_STREAM("skipping first point cloud");
+    }
+    else
+    {
+		  if (cloudPub.getNumSubscribers())
+			  cloudPub.publish(PointMatcher_ros::pointMatcherCloudToRosMsg<float>(cloud, sensor_frame, scanTime));
+    }
 			
 		cloud = DP();
-		mutexCloud.unlock();
+		//mutexCloud.unlock();
 	}
 }
 
 void Assembler::gotJoint(const sensor_msgs::JointState& jointMsgIn)
 {
-	const double eps = 0.002;	
+	const double eps = 0.005;	
 
 	sensor_msgs::JointState joint = buildPtuJoint();
 
+  //cout << jointMsgIn.position[panId] << endl;
 	if(currentPanMax)
 	{
 		if(jointMsgIn.position[panId] > maxPan - eps)
 		{
-				ROS_INFO_STREAM("Going toward minPan(" << minPan << ")");
+				ROS_DEBUG_STREAM("Going toward minPan(" << minPan << ")");
 				joint.position[panId] = minPan;
 				joint.velocity[panId] = velocityPan;
 
@@ -254,7 +255,6 @@ void Assembler::gotJoint(const sensor_msgs::JointState& jointMsgIn)
 
 				currentPanMax = false;
         timeLastScan = jointMsgIn.header.stamp;
-				//publishCloud();
 		}
 	}
 	else
@@ -262,7 +262,7 @@ void Assembler::gotJoint(const sensor_msgs::JointState& jointMsgIn)
 
 		if(jointMsgIn.position[panId] < minPan + eps)
 		{
-				ROS_INFO_STREAM("Going toward maxPan(" << maxPan << ")");
+				ROS_DEBUG_STREAM("Going toward maxPan(" << maxPan << ")");
 				joint.position[panId] = maxPan;
 				joint.velocity[panId] = velocityPan;
 
@@ -270,7 +270,6 @@ void Assembler::gotJoint(const sensor_msgs::JointState& jointMsgIn)
 
 				currentPanMax = true;
         timeLastScan = jointMsgIn.header.stamp;
-				//publishCloud();
 		}
 	}
 
