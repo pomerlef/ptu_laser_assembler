@@ -10,6 +10,7 @@
 
 #include <Eigen/Dense>
 #include "pointmatcher/PointMatcher.h"
+#include "pointmatcher/Timer.h"
 
 #include "pointmatcher_ros/point_cloud.h"
 #include "pointmatcher_ros/transform.h"
@@ -101,7 +102,7 @@ Assembler::Assembler(ros::NodeHandle& n, ros::NodeHandle& pn):
   msgDelay(ros::Duration(getParam<double>("msgDelay", 0.12)))
 {
 	
-	scanSub = n.subscribe("/lidar/scan", 1, &Assembler::gotScan, this);
+	scanSub = n.subscribe("/lidar/scan", 20, &Assembler::gotScan, this);
 	ptuSub = n.subscribe("/ptu/state", 1, &Assembler::gotJoint, this);
 	
 	ptuPub = n.advertise<sensor_msgs::JointState>("/ptu/cmd", 2, true);
@@ -151,6 +152,8 @@ sensor_msgs::JointState Assembler::buildPtuJoint()
 
 void Assembler::gotScan(const sensor_msgs::LaserScan& scanMsg)
 {
+  PointMatcherSupport::timer t;
+
   scanQueue.push(scanMsg);
   
   ros::Duration dt = ros::Time::now() - scanQueue.front().header.stamp;
@@ -195,6 +198,9 @@ void Assembler::gotScan(const sensor_msgs::LaserScan& scanMsg)
       timeLastScan = ros::Time(0);
     }
   }
+
+  double runTime = t.elapsed();
+  cout << "Callback took " << runTime << " sec, (" << 1/runTime << " Hz)" << endl;
 
 }
 
