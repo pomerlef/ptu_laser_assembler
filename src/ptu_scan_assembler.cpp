@@ -10,6 +10,7 @@
 
 #include <Eigen/Dense>
 #include "pointmatcher/PointMatcher.h"
+#include "pointmatcher/Timer.h"
 
 #include "pointmatcher_ros/point_cloud.h"
 #include "pointmatcher_ros/transform.h"
@@ -151,6 +152,8 @@ sensor_msgs::JointState Assembler::buildPtuJoint()
 
 void Assembler::gotScan(const sensor_msgs::LaserScan& scanMsg)
 {
+  PointMatcherSupport::timer t;
+
   scanQueue.push(scanMsg);
   
   ros::Duration dt = ros::Time::now() - scanQueue.front().header.stamp;
@@ -195,6 +198,9 @@ void Assembler::gotScan(const sensor_msgs::LaserScan& scanMsg)
       timeLastScan = ros::Time(0);
     }
   }
+
+  double runTime = t.elapsed();
+  cout << "Callback took " << runTime << " sec, (" << 1/runTime << " Hz)" << endl;
 
 }
 
