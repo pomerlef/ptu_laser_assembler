@@ -101,7 +101,7 @@ Assembler::Assembler(ros::NodeHandle& n, ros::NodeHandle& pn):
   msgDelay(ros::Duration(getParam<double>("msgDelay", 0.12)))
 {
 	
-	scanSub = n.subscribe("/lidar/scan", 1, &Assembler::gotScan, this);
+	scanSub = n.subscribe("/lidar/scan", 20, &Assembler::gotScan, this);
 	ptuSub = n.subscribe("/ptu/state", 1, &Assembler::gotJoint, this);
 	
 	ptuPub = n.advertise<sensor_msgs::JointState>("/ptu/cmd", 2, true);
