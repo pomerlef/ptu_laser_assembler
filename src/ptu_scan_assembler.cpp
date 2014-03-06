@@ -171,11 +171,11 @@ void Assembler::gotScan(const sensor_msgs::LaserScan& scanMsg)
       //sensor_frame = scanMsgIn.header.frame_id;
       if(cloud.features.cols() == 0)
       {
-        cloud = PointMatcher_ros::rosMsgToPointMatcherCloud<float>(scanMsgIn, &tfListener, odom_frame, true);
+        cloud = PointMatcher_ros::rosMsgToPointMatcherCloud<float>(scanMsgIn, &tfListener, odom_frame, true, true);
       }
       else
       {
-        cloud.concatenate(PointMatcher_ros::rosMsgToPointMatcherCloud<float>(scanMsgIn, &tfListener, odom_frame, true));
+        cloud.concatenate(PointMatcher_ros::rosMsgToPointMatcherCloud<float>(scanMsgIn, &tfListener, odom_frame, true, true));
       }
 
       mutexCloud.unlock();
