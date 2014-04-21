@@ -9,7 +9,7 @@
         <param name="minTilt" type="double" value="-0.8"/>
         <param name="maxTilt" type="double" value="0.5"/>
 
-        <param name="velocityPan" type="double" value="1.0"/>
+        <param name="velocityPan" type="double" value="1.0"/> <!-- 1.0-->
         <param name="velocityTilt" type="double" value="0.5"/>
 
         <param name="minRange" type="double" value="1.0"/>
