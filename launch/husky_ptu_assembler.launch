@@ -12,6 +12,11 @@
         <param name="velocityPan" type="double" value="1.0"/>
         <param name="velocityTilt" type="double" value="0.5"/>
 
-        <param name="msgDelay" type="double" value="0.053"/> <!-- This value was experimentaly computed for husky cpr-lav01 -->
+        <param name="minRange" type="double" value="1.0"/>
+        <param name="maxRange" type="double" value="40.0"/>
+        <param name="produceCommand" type="bool" value="true"/>
+        <param name="produceCloud" type="bool" value="true"/>
+
+        <param name="msgDelay" type="double" value="0.046"/> <!-- 0.046 or 0.053 This value was experimentaly computed for husky cpr-lav01 -->
     </node>
 </launch>

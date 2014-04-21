@@ -49,6 +49,10 @@ class Assembler
 	const float maxTilt;
 	const float velocityPan;
 	const float velocityTilt;
+	const float minRange;
+	const float maxRange;
+	const bool produceCommand;
+	const bool produceCloud;
 	
 	// States
 	bool currentPanMax;
@@ -94,6 +98,10 @@ Assembler::Assembler(ros::NodeHandle& n, ros::NodeHandle& pn):
   maxTilt(getParam<double>("maxTilt", 0.5)),
   velocityPan(getParam<double>("velocityPan", 2.0)),
   velocityTilt(getParam<double>("velocityTilt", 0.5)),
+  minRange(getParam<double>("minRange", 0.05)),
+  maxRange(getParam<double>("maxRange", 20.0)),
+  produceCommand(getParam<bool>("produceCommand", true)),
+  produceCloud(getParam<bool>("produceCloud", true)),
   firstPointCloud(true),
 	panId(0),
 	tiltId(1),
@@ -104,27 +112,34 @@ Assembler::Assembler(ros::NodeHandle& n, ros::NodeHandle& pn):
   msgDelay(ros::Duration(getParam<double>("msgDelay", 0.12)))
 {
 	
-	scanSub = n.subscribe("/lidar/scan", 2, &Assembler::gotScan, this);
+  if(produceCloud)
+  {
+	  scanSub = n.subscribe("/lidar/scan", 2, &Assembler::gotScan, this);
+  }
+
 	ptuSub = n.subscribe("/ptu/state", 1, &Assembler::gotJoint, this);
 	
 	ptuPub = n.advertise<sensor_msgs::JointState>("/ptu/cmd", 2, true);
 	cloudPub = n.advertise<sensor_msgs::PointCloud2>("/cloud", 2, true);
 
-	while (!ptuPub.getNumSubscribers())
-	{
-		ROS_WARN_STREAM("Waiting 1s for the PTU node. Will try to publish later ");
-		ros::Duration(1).sleep();
-	}
+  if(produceCommand)
+  {
+    while (!ptuPub.getNumSubscribers())
+    {
+      ROS_WARN_STREAM("Waiting 1s for the PTU node. Will try to publish later ");
+      ros::Duration(1).sleep();
+    }
 
-	sensor_msgs::JointState joint = buildPtuJoint();
+    sensor_msgs::JointState joint = buildPtuJoint();
 
-	joint.position[panId] = maxPan;
-	joint.velocity[panId] = velocityPan;
+    joint.position[panId] = maxPan;
+    joint.velocity[panId] = velocityPan;
 
-	ptuPub.publish(joint);
+    ptuPub.publish(joint);
 
-	// init states
-	currentPanMax = true;
+    // init states
+    currentPanMax = true;
+  }
 
 }
 
@@ -168,7 +183,11 @@ void Assembler::gotScan(const sensor_msgs::LaserScan& scanMsg)
     scanMsgIn.header.stamp += msgDelay; 
 
     scanTime = scanMsgIn.header.stamp;
-    
+
+    // Modify range of the msg before conversion
+    scanMsgIn.range_min = minRange;
+    scanMsgIn.range_max = maxRange;
+
     try
     {
 
@@ -247,14 +266,17 @@ void Assembler::gotJoint(const sensor_msgs::JointState& jointMsgIn)
 	{
 		if(jointMsgIn.position[panId] > maxPan - eps)
 		{
+      if(produceCommand)
+      {
 				ROS_DEBUG_STREAM("Going toward minPan(" << minPan << ")");
 				joint.position[panId] = minPan;
 				joint.velocity[panId] = velocityPan;
 
 				ptuPub.publish(joint);
+      }
 
-				currentPanMax = false;
-        timeLastScan = jointMsgIn.header.stamp;
+			currentPanMax = false;
+      timeLastScan = jointMsgIn.header.stamp;
 		}
 	}
 	else
@@ -262,14 +284,17 @@ void Assembler::gotJoint(const sensor_msgs::JointState& jointMsgIn)
 
 		if(jointMsgIn.position[panId] < minPan + eps)
 		{
+      if(produceCommand)
+      {
 				ROS_DEBUG_STREAM("Going toward maxPan(" << maxPan << ")");
 				joint.position[panId] = maxPan;
 				joint.velocity[panId] = velocityPan;
 
 				ptuPub.publish(joint);
+      }
 
-				currentPanMax = true;
-        timeLastScan = jointMsgIn.header.stamp;
+      currentPanMax = true;
+      timeLastScan = jointMsgIn.header.stamp;
 		}
 	}
 
